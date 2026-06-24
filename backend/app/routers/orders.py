@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.service import Service
 from app.schemas.order import OrderCreate, OrderOut
-from app.core.dependencies import get_current_user
+from app.schemas.order_update import OrderStatusUpdate, DriverAssign
+from app.core.dependencies import get_current_user, require_role
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -87,4 +88,56 @@ def get_order(
         raise HTTPException(status_code=404, detail="Order not found")
     if order.customer_id != current_user.id and current_user.role not in ["staff", "admin", "driver"]:
         raise HTTPException(status_code=403, detail="Not authorized to view this order")
+    return order
+
+
+@router.get("/all/list", response_model=list[OrderOut])
+def list_all_orders(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.staff, UserRole.admin, UserRole.driver)),
+):
+    query = db.query(Order).options(joinedload(Order.items))
+    if current_user.role == UserRole.driver:
+        query = query.filter(Order.driver_id == current_user.id)
+    return query.order_by(Order.created_at.desc()).all()
+
+
+@router.patch("/{order_id}/status", response_model=OrderOut)
+def update_order_status(
+    order_id: str,
+    payload: OrderStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.staff, UserRole.admin, UserRole.driver)),
+):
+    order = db.query(Order).options(joinedload(Order.items)).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if current_user.role == UserRole.driver and order.driver_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not assigned to this order")
+
+    order.status = payload.status
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@router.patch("/{order_id}/assign-driver", response_model=OrderOut)
+def assign_driver(
+    order_id: str,
+    payload: DriverAssign,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.staff, UserRole.admin)),
+):
+    order = db.query(Order).options(joinedload(Order.items)).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    driver = db.query(User).filter(User.id == payload.driver_id, User.role == UserRole.driver).first()
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+
+    order.driver_id = driver.id
+    db.commit()
+    db.refresh(order)
     return order
