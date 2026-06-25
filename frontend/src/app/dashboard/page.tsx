@@ -160,40 +160,59 @@ function CustomerDashboard() {
 }
 
 function DriverDashboard() {
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  const activeCount = orders.filter((o) =>
+    ["picked_up", "in_progress", "out_for_delivery"].includes(o.status)
+  ).length;
+  const completedCount = orders.filter((o) => o.status === "delivered").length;
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 sm:grid-cols-3">
-        <DashboardCard title="Assigned Pickups" value="—" hint="See table below" />
-        <DashboardCard title="Completed" value="—" hint="This week" />
-        <DashboardCard title="Earnings" value="KES —" hint="This week" />
+        <DashboardCard title="Assigned Pickups" value={String(activeCount)} hint="Currently active" />
+        <DashboardCard title="Completed" value={String(completedCount)} hint="Delivered by you" />
+        <DashboardCard title="Total Assigned" value={String(orders.length)} hint="All time" />
       </div>
-      <OrderManagementTable allowStatusChange={true} />
+      <OrderManagementTable allowStatusChange={true} onOrdersLoaded={setOrders} />
     </div>
   );
 }
 
 function StaffDashboard() {
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  const inProgress = orders.filter((o) =>
+    ["confirmed", "picked_up", "in_progress"].includes(o.status)
+  ).length;
+  const readyForDelivery = orders.filter((o) => o.status === "ready").length;
+  const totalItems = orders.reduce((sum, o) => sum + o.items.length, 0);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 sm:grid-cols-3">
-        <DashboardCard title="Orders In Progress" value="—" hint="See table below" />
-        <DashboardCard title="Ready for Delivery" value="—" hint="Awaiting driver" />
-        <DashboardCard title="Today's Throughput" value="—" hint="Items processed" />
+        <DashboardCard title="Orders In Progress" value={String(inProgress)} hint="At the facility" />
+        <DashboardCard title="Ready for Delivery" value={String(readyForDelivery)} hint="Awaiting driver" />
+        <DashboardCard title="Total Items" value={String(totalItems)} hint="Across all orders" />
       </div>
-      <OrderManagementTable allowStatusChange={true} />
+      <OrderManagementTable allowStatusChange={true} onOrdersLoaded={setOrders} />
     </div>
   );
 }
 
 function AdminDashboard() {
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  const totalRevenue = orders.reduce((sum, o) => sum + o.total_amount, 0);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 sm:grid-cols-3">
-        <DashboardCard title="Total Users" value="—" hint="Across all roles" />
-        <DashboardCard title="Total Orders" value="—" hint="All time" />
-        <DashboardCard title="Revenue" value="—" hint="This month" />
+        <DashboardCard title="Total Orders" value={String(orders.length)} hint="All time" />
+        <DashboardCard title="Revenue" value={"KES " + totalRevenue.toLocaleString()} hint="From visible orders" />
+        <DashboardCard title="Delivered" value={String(orders.filter((o) => o.status === "delivered").length)} hint="Completed orders" />
       </div>
-      <OrderManagementTable allowStatusChange={true} />
+      <OrderManagementTable allowStatusChange={true} onOrdersLoaded={setOrders} />
     </div>
   );
 }
