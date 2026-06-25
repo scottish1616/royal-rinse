@@ -8,6 +8,7 @@ export default function OrderManagementTable({
   allowStatusChange = true,
 }: {
   allowStatusChange?: boolean;
+  onOrdersLoaded?: (orders: Order[]) => void;
 }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
