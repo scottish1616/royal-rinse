@@ -6,6 +6,7 @@ import { STATUS_FLOW, STATUS_LABELS, STATUS_COLORS } from "@/lib/order-status";
 
 export default function OrderManagementTable({
   allowStatusChange = true,
+  onOrdersLoaded,
 }: {
   allowStatusChange?: boolean;
   onOrdersLoaded?: (orders: Order[]) => void;
@@ -22,7 +23,10 @@ export default function OrderManagementTable({
   function loadOrders() {
     setLoading(true);
     getAllOrders()
-      .then(setOrders)
+      .then((data) => {
+        setOrders(data);
+        if (onOrdersLoaded) onOrdersLoaded(data);
+      })
       .catch(() => setError("Could not load orders."))
       .finally(() => setLoading(false));
   }
@@ -31,7 +35,11 @@ export default function OrderManagementTable({
     setUpdatingId(orderId);
     try {
       const updated = await updateOrderStatus(orderId, newStatus);
-      setOrders((prev) => prev.map((o) => (o.id === orderId ? updated : o)));
+      setOrders((prev) => {
+        const next = prev.map((o) => (o.id === orderId ? updated : o));
+        if (onOrdersLoaded) onOrdersLoaded(next);
+        return next;
+      });
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to update status");
     } finally {
