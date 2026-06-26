@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllOrders, updateOrderStatus, type Order } from "@/lib/orders";
+import {
+  getAllOrders,
+  updateOrderStatus,
+  recordPayment,
+  getDrivers,
+  assignDriver,
+  type Order,
+  type Driver,
+} from "@/lib/orders";
 import { STATUS_FLOW, STATUS_LABELS, STATUS_COLORS } from "@/lib/order-status";
 
 export default function OrderManagementTable({
@@ -12,12 +20,18 @@ export default function OrderManagementTable({
   onOrdersLoaded?: (orders: Order[]) => void;
 }) {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadOrders();
+    getDrivers()
+      .then(setDrivers)
+      .catch(() => {
+        // Non-admin/staff roles can't see drivers list; safe to ignore.
+      });
   }, []);
 
   function loadOrders() {
@@ -31,17 +45,47 @@ export default function OrderManagementTable({
       .finally(() => setLoading(false));
   }
 
+  function updateLocalOrder(orderId: string, updated: Order) {
+    setOrders((prev) => {
+      const next = prev.map((o) => (o.id === orderId ? updated : o));
+      if (onOrdersLoaded) onOrdersLoaded(next);
+      return next;
+    });
+  }
+
   async function handleStatusChange(orderId: string, newStatus: string) {
     setUpdatingId(orderId);
     try {
       const updated = await updateOrderStatus(orderId, newStatus);
-      setOrders((prev) => {
-        const next = prev.map((o) => (o.id === orderId ? updated : o));
-        if (onOrdersLoaded) onOrdersLoaded(next);
-        return next;
-      });
+      updateLocalOrder(orderId, updated);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function handleAssignDriver(orderId: string, driverId: string) {
+    if (!driverId) return;
+    setUpdatingId(orderId);
+    try {
+      const updated = await assignDriver(orderId, driverId);
+      updateLocalOrder(orderId, updated);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to assign driver");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function handleRecordPayment(orderId: string, method: string) {
+    if (!confirm("Mark this order as paid via " + method.toUpperCase() + "?")) return;
+    setUpdatingId(orderId);
+    try {
+      await recordPayment(orderId, method);
+      alert("Payment recorded successfully.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to record payment");
     } finally {
       setUpdatingId(null);
     }
@@ -64,7 +108,7 @@ export default function OrderManagementTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#0F172A]/10 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-[#0F172A]/10 bg-white">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-[#0F172A]/10 bg-[#0F172A]/[0.02]">
           <tr>
@@ -75,6 +119,10 @@ export default function OrderManagementTable({
             {allowStatusChange && (
               <th className="px-4 py-3 font-medium text-[#0F172A]/60">Update</th>
             )}
+            {drivers.length > 0 && (
+              <th className="px-4 py-3 font-medium text-[#0F172A]/60">Driver</th>
+            )}
+            <th className="px-4 py-3 font-medium text-[#0F172A]/60">Payment</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#0F172A]/10">
@@ -118,6 +166,43 @@ export default function OrderManagementTable({
                   )}
                 </td>
               )}
+              {drivers.length > 0 && (
+                <td className="px-4 py-3">
+                  <select
+                    disabled={updatingId === order.id}
+                    defaultValue=""
+                    onChange={(e) => handleAssignDriver(order.id, e.target.value)}
+                    className="rounded-lg border border-[#0F172A]/15 px-2 py-1 text-xs"
+                  >
+                    <option value="" disabled>
+                      Assign driver
+                    </option>
+                    {drivers.map((driver) => (
+                      <option key={driver.id} value={driver.id}>
+                        {driver.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              )}
+              <td className="px-4 py-3">
+                <div className="flex gap-1">
+                  <button
+                    disabled={updatingId === order.id}
+                    onClick={() => handleRecordPayment(order.id, "cash")}
+                    className="rounded-lg border border-[#0F172A]/15 px-2 py-1 text-xs hover:bg-[#0F172A]/5"
+                  >
+                    Cash
+                  </button>
+                  <button
+                    disabled={updatingId === order.id}
+                    onClick={() => handleRecordPayment(order.id, "mpesa")}
+                    className="rounded-lg border border-[#0F172A]/15 px-2 py-1 text-xs hover:bg-[#0F172A]/5"
+                  >
+                    M-Pesa
+                  </button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>

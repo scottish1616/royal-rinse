@@ -101,3 +101,54 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
   }
   return res.json();
 }
+
+export async function recordPayment(orderId: string, method: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(API_URL + "/payments", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token,
+    },
+    body: JSON.stringify({ order_id: orderId, method }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to record payment");
+  }
+}
+
+export type Driver = {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+};
+
+export async function getDrivers(): Promise<Driver[]> {
+  const token = getToken();
+  const res = await fetch(API_URL + "/users/drivers", {
+    headers: { Authorization: "Bearer " + token },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to fetch drivers");
+  }
+  return res.json();
+}
+
+export async function assignDriver(orderId: string, driverId: string): Promise<Order> {
+  const token = getToken();
+  const res = await fetch(API_URL + "/orders/" + orderId + "/assign-driver", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token,
+    },
+    body: JSON.stringify({ driver_id: driverId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to assign driver");
+  }
+  return res.json();
+}

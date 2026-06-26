@@ -7,6 +7,7 @@ import { getMyOrders, type Order } from "@/lib/orders";
 import { STATUS_LABELS, STATUS_COLORS } from "@/lib/order-status";
 import { Button } from "@/components/ui/button";
 import OrderManagementTable from "@/components/dashboard/OrderManagementTable";
+import { getAllUsers } from "@/lib/users";
 
 const ACTIVE_STATUSES = [
   "pending",
@@ -202,12 +203,19 @@ function StaffDashboard() {
 
 function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
-
+  const [userCount, setUserCount] = useState<number | null>(null);
   const totalRevenue = orders.reduce((sum, o) => sum + o.total_amount, 0);
+
+  useEffect(() => {
+    getAllUsers()
+      .then((users) => setUserCount(users.length))
+      .catch(() => setUserCount(null));
+  }, []);
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 sm:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-4">
+        <DashboardCard title="Total Users" value={userCount !== null ? String(userCount) : "—"} hint="Across all roles" />
         <DashboardCard title="Total Orders" value={String(orders.length)} hint="All time" />
         <DashboardCard title="Revenue" value={"KES " + totalRevenue.toLocaleString()} hint="From visible orders" />
         <DashboardCard title="Delivered" value={String(orders.filter((o) => o.status === "delivered").length)} hint="Completed orders" />
