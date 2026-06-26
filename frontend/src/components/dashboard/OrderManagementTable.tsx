@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   getAllOrders,
   updateOrderStatus,
@@ -25,7 +25,7 @@ export default function OrderManagementTable({
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  function loadOrders() {
+  const loadOrders = useCallback(() => {
     setLoading(true);
     getAllOrders()
       .then((data) => {
@@ -34,7 +34,7 @@ export default function OrderManagementTable({
       })
       .catch(() => setError("Could not load orders."))
       .finally(() => setLoading(false));
-  }
+  }, [onOrdersLoaded]);
 
   useEffect(() => {
     loadOrders();
@@ -43,7 +43,7 @@ export default function OrderManagementTable({
       .catch(() => {
         // Non-admin/staff roles can't see drivers list; safe to ignore.
       });
-  }, []);
+  }, [loadOrders]);
 
   function updateLocalOrder(orderId: string, updated: Order) {
     setOrders((prev) => {

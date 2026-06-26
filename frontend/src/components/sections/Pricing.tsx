@@ -27,7 +27,7 @@ export default async function Pricing() {
         </div>
 
         <div className="mt-14 grid gap-6 sm:grid-cols-3">
-          {cards.map((service, i) => {
+          {cards.map((service) => {
             if (!service) return null;
             const isFeatured = service.name === "Express Service";
             return (
