@@ -26,23 +26,35 @@ export default function OrderManagementTable({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadOrders = () => {
-      setLoading(true);
-      getAllOrders()
-        .then((data) => {
-          setOrders(data);
-          if (onOrdersLoaded) onOrdersLoaded(data);
-        })
-        .catch(() => setError("Could not load orders."))
-        .finally(() => setLoading(false));
+    let isMounted = true;
+
+    const fetchOrders = async () => {
+      try {
+        const data = await getAllOrders();
+        if (!isMounted) return;
+        setOrders(data);
+        if (onOrdersLoaded) onOrdersLoaded(data);
+      } catch {
+        if (!isMounted) return;
+        setError("Could not load orders.");
+      } finally {
+        if (!isMounted) return;
+        setLoading(false);
+      }
     };
 
-    loadOrders();
+    void fetchOrders();
     getDrivers()
-      .then(setDrivers)
+      .then((data) => {
+        if (isMounted) setDrivers(data);
+      })
       .catch(() => {
         // Non-admin/staff roles can't see drivers list; safe to ignore.
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, [onOrdersLoaded]);
 
   function updateLocalOrder(orderId: string, updated: Order) {
