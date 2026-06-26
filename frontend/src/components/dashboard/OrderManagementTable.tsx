@@ -25,15 +25,6 @@ export default function OrderManagementTable({
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadOrders();
-    getDrivers()
-      .then(setDrivers)
-      .catch(() => {
-        // Non-admin/staff roles can't see drivers list; safe to ignore.
-      });
-  }, []);
-
   function loadOrders() {
     setLoading(true);
     getAllOrders()
@@ -44,6 +35,15 @@ export default function OrderManagementTable({
       .catch(() => setError("Could not load orders."))
       .finally(() => setLoading(false));
   }
+
+  useEffect(() => {
+    loadOrders();
+    getDrivers()
+      .then(setDrivers)
+      .catch(() => {
+        // Non-admin/staff roles can't see drivers list; safe to ignore.
+      });
+  }, []);
 
   function updateLocalOrder(orderId: string, updated: Order) {
     setOrders((prev) => {
