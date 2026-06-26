@@ -28,6 +28,8 @@ export default function OrderManagementTable({
   useEffect(() => {
     let isMounted = true;
 
+    // Load orders once on mount and keep the UI in sync with the latest server state.
+
     const fetchOrders = async () => {
       try {
         const data = await getAllOrders();
