@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$|$/g, "");
 const TOKEN_KEY = "royal_rinse_token";
 
 export type UserRole = "customer" | "driver" | "staff" | "admin";
